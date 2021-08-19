@@ -144,6 +144,7 @@ func Provider() *schema.Provider {
 			"cloudflare_static_route":                           resourceCloudflareStaticRoute(),
 			"cloudflare_teams_list":                             resourceCloudflareTeamsList(),
 			"cloudflare_teams_location":                         resourceCloudflareTeamsLocation(),
+			"cloudflare_teams_account":                          resourceCloudflareTeamsAccountConfiguration(),
 			"cloudflare_waf_group":                              resourceCloudflareWAFGroup(),
 			"cloudflare_waf_package":                            resourceCloudflareWAFPackage(),
 			"cloudflare_waf_rule":                               resourceCloudflareWAFRule(),

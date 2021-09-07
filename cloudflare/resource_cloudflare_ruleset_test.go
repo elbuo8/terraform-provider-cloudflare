@@ -1036,8 +1036,8 @@ func testAccCheckCloudflareRulesetManagedWAFPayloadLoggigng(rnd, name, zoneID, z
       action_parameters {
         id = "efb7b8c949ac4650a09736fc376e9aee"
         matched_data {
-					public_key = "not_a_real_public_key"
-				}
+          public_key = "not_a_real_public_key"
+        }
       }
 
       expression = "true"

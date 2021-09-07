@@ -153,8 +153,8 @@ The following arguments are supported:
 
 * `characteristics` - (Optional) List of parameters that define how Cloudflare tracks the request rate for this rule.
 * `period` - (Optional) The period of time to consider (in seconds) when evaluating the request rate.
-* `requests_per_period` - (Optional) The number of requests over the period of time that will trigger the Rate Limiting rule.
-* `mitigation_timeout` - (Optional) Once the request rate is reached, the Rate Limiting rule blocks further requests for the period of time defined in this field.
+* `requests_per_period` - (Optional) The number of requests over the period of time that will trigger the rate limiting rule.
+* `mitigation_timeout` - (Optional) Once the request rate is reached, the rate limiting rule blocks further requests for the period of time defined in this field (in seconds).
 * `mitigation_expression` - (Optional) Scope of the mitigation action. Allows you to specify an action scope different from the rule scope. Refer to the [rate limiting parameters documentation](https://developers.cloudflare.com/firewall/cf-rulesets/custom-rules/rate-limiting/parameters) for full details.
 
 <a id="nestedblock--action-parameters-uri"></a>

@@ -225,6 +225,38 @@ func resourceCloudflareRuleset() *schema.Resource {
 								},
 							},
 						},
+						"ratelimit": {
+							Type:     schema.TypeList,
+							Optional: true,
+							MaxItems: 1,
+							Elem: &schema.Resource{
+								Schema: map[string]*schema.Schema{
+									"characteristics": {
+										Type:     schema.TypeSet,
+										Optional: true,
+										Elem: &schema.Schema{
+											Type: schema.TypeString,
+										},
+									},
+									"period": {
+										Type:     schema.TypeInt,
+										Optional: true,
+									},
+									"requests_per_period": {
+										Type:     schema.TypeInt,
+										Optional: true,
+									},
+									"mitigation_timeout": {
+										Type:     schema.TypeInt,
+										Optional: true,
+									},
+									"mitigation_expression": {
+										Type:     schema.TypeString,
+										Optional: true,
+									},
+								},
+							},
+						},
 					},
 				},
 			},
@@ -404,56 +436,85 @@ func buildRulesetRulesFromResource(r interface{}) ([]cloudflare.RulesetRule, err
 			return nil, errors.New("unable to create interface map type assertion for rule")
 		}
 
-		rule.ActionParameters = &cloudflare.RulesetRuleActionParameters{}
-		for _, parameter := range resourceRule["action_parameters"].([]interface{}) {
-			for pKey, pValue := range parameter.(map[string]interface{}) {
-				switch pKey {
-				case "id":
-					rule.ActionParameters.ID = pValue.(string)
-				case "ruleset":
-					rule.ActionParameters.Ruleset = pValue.(string)
-				case "increment":
-					rule.ActionParameters.Increment = pValue.(int)
-				case "overrides":
-					categories := []cloudflare.RulesetRuleActionParametersCategories{}
-					rules := []cloudflare.RulesetRuleActionParametersRules{}
+		if len(resourceRule["action_parameters"].([]interface{})) > 0 {
+			rule.ActionParameters = &cloudflare.RulesetRuleActionParameters{}
+			for _, parameter := range resourceRule["action_parameters"].([]interface{}) {
+				for pKey, pValue := range parameter.(map[string]interface{}) {
+					switch pKey {
+					case "id":
+						rule.ActionParameters.ID = pValue.(string)
+					case "ruleset":
+						rule.ActionParameters.Ruleset = pValue.(string)
+					case "increment":
+						rule.ActionParameters.Increment = pValue.(int)
+					case "overrides":
+						categories := []cloudflare.RulesetRuleActionParametersCategories{}
+						rules := []cloudflare.RulesetRuleActionParametersRules{}
 
-					for _, overrideParamValue := range pValue.([]interface{}) {
-						// Category based overrides
-						if val, ok := overrideParamValue.(map[string]interface{})["categories"]; ok {
-							for _, category := range val.([]interface{}) {
-								cData := category.(map[string]interface{})
-								categories = append(categories, cloudflare.RulesetRuleActionParametersCategories{
-									Category: cData["category"].(string),
-									Action:   cData["action"].(string),
-									Enabled:  cData["enabled"].(bool),
-								})
+						for _, overrideParamValue := range pValue.([]interface{}) {
+							// Category based overrides
+							if val, ok := overrideParamValue.(map[string]interface{})["categories"]; ok {
+								for _, category := range val.([]interface{}) {
+									cData := category.(map[string]interface{})
+									categories = append(categories, cloudflare.RulesetRuleActionParametersCategories{
+										Category: cData["category"].(string),
+										Action:   cData["action"].(string),
+										Enabled:  cData["enabled"].(bool),
+									})
+								}
+							}
+
+							// Rule ID based overrides
+							if val, ok := overrideParamValue.(map[string]interface{})["rules"]; ok {
+								for _, rule := range val.([]interface{}) {
+									rData := rule.(map[string]interface{})
+									rules = append(rules, cloudflare.RulesetRuleActionParametersRules{
+										ID:             rData["id"].(string),
+										Action:         rData["action"].(string),
+										Enabled:        rData["enabled"].(bool),
+										ScoreThreshold: rData["score_threshold"].(int),
+									})
+								}
 							}
 						}
 
-						// Rule ID based overrides
-						if val, ok := overrideParamValue.(map[string]interface{})["rules"]; ok {
-							for _, rule := range val.([]interface{}) {
-								rData := rule.(map[string]interface{})
-								rules = append(rules, cloudflare.RulesetRuleActionParametersRules{
-									ID:             rData["id"].(string),
-									Action:         rData["action"].(string),
-									Enabled:        rData["enabled"].(bool),
-									ScoreThreshold: rData["score_threshold"].(int),
-								})
+						if len(categories) > 0 || len(rules) > 0 {
+							rule.ActionParameters.Overrides = &cloudflare.RulesetRuleActionParametersOverrides{
+								Categories: categories,
+								Rules:      rules,
 							}
 						}
-					}
 
-					if len(categories) > 0 || len(rules) > 0 {
-						rule.ActionParameters.Overrides = &cloudflare.RulesetRuleActionParametersOverrides{
-							Categories: categories,
-							Rules:      rules,
+					default:
+						log.Printf("[DEBUG] unknown key encountered in buildRulesetRulesFromResource for action parameters: %s", pKey)
+					}
+				}
+			}
+		}
+
+		if len(resourceRule["ratelimit"].([]interface{})) > 0 {
+			rule.RateLimit = &cloudflare.RulesetRuleRateLimit{}
+			for _, parameter := range resourceRule["ratelimit"].([]interface{}) {
+				for pKey, pValue := range parameter.(map[string]interface{}) {
+					switch pKey {
+					case "characteristics":
+						characteristicKeys := make([]string, 0)
+						for _, v := range pValue.(*schema.Set).List() {
+							characteristicKeys = append(characteristicKeys, v.(string))
 						}
-					}
+						rule.RateLimit.Characteristics = characteristicKeys
+					case "period":
+						rule.RateLimit.Period = pValue.(int)
+					case "requests_per_period":
+						rule.RateLimit.RequestsPerPeriod = pValue.(int)
+					case "mitigation_timeout":
+						rule.RateLimit.MitigationTimeout = pValue.(int)
+					case "mitigation_expression":
+						rule.RateLimit.MitigationExpression = pValue.(string)
 
-				default:
-					log.Printf("[DEBUG] unknown key encountered in buildRulesetRulesFromResource for action parameters: %s", pKey)
+					default:
+						log.Printf("[DEBUG] unknown key encountered in buildRulesetRulesFromResource for ratelimit: %s", pKey)
+					}
 				}
 			}
 		}
